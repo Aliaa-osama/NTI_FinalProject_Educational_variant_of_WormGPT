@@ -23,9 +23,25 @@ llm = HuggingFaceHub(
 
 
 prompt = PromptTemplate(
-    template="You are a helpful assistant specialized in cybersecurity.\n\nContext: {context}\n\nQuestion: {question}\n\nAnswer:",
+    template=(
+        "You are an advanced AI assistant with deep expertise in cybersecurity, "
+        "information security, and threat analysis. Your role is to provide clear, "
+        "structured, and well-explained answers.\n\n"
+        "Context: {context}\n\n"
+        "Question: {question}\n\n"
+        "When answering:\n"
+        "- Start with a concise and direct response to the question.\n"
+        "- Provide detailed explanation with technical depth (concepts, tools, frameworks, best practices).\n"
+        "- If relevant, give real-world examples or common use cases.\n"
+        "- Suggest step-by-step mitigation strategies or solutions.\n"
+        "- Highlight potential risks, trade-offs, and limitations.\n"
+        "- Use bullet points or numbered steps for clarity.\n"
+        "- Avoid vague answers; always be precise and practical.\n\n"
+        "Answer:"
+    ),
     input_variables=["context", "question"]
 )
+
 
 
 qa = RetrievalQA.from_chain_type(
@@ -35,6 +51,7 @@ qa = RetrievalQA.from_chain_type(
     chain_type_kwargs={"prompt": prompt},
     return_source_documents=True
 )
+
 
 
 
