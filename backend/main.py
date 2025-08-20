@@ -1,140 +1,107 @@
-# from langchain_community.llms import HuggingFaceHub
-# from langchain.chains import RetrievalQA
-# from langchain.prompts import PromptTemplate
-# from langchain_community.vectorstores import Chroma
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-# from langchain_community.document_loaders import PyPDFDirectoryLoader
-# from langchain_community.vectorstores import Chroma
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# #------------------------
-# # Load documents from a directory and creating chunks
-# #------------------------
-# loader = PyPDFDirectoryLoader("./documents")
-# documents = loader.load()
+# ============================================
+# RAG over PDFs — LangChain (modern APIs)
+# Requirements (install once):
+#   pip install -U langchain langchain-google-genai langchain-huggingface langchain-chroma sentence-transformers pypdf
+# ============================================
 
-# if not documents:
-#     print({"status": "No PDF files found in the folder."})
-
-# text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-# split_docs = text_splitter.split_documents(documents)
-# print(split_docs[:2])  # Print first two chunks for verification
-# # ------------------------
-# #  SecureBERT+ Embeddings
-# # ------------------------
-# emb_model = HuggingFaceEmbeddings(model_name="ehsanaghaei/SecureBERT_Plus")
-
-# vectordb = Chroma(persist_directory="./chroma_db", embedding_function=emb_model,documents=split_docs)
-
-# retriever = vectordb.as_retriever(search_kwargs={"k": 4})
-
-
-
-# llm = HuggingFaceHub(
-#     repo_id="meta-llama/Llama-2-7b-chat-hf",   
-#     model_kwargs={"temperature": 0.1, "max_length": 512},
-#     huggingfacehub_api_token="hf_xxx"  
-# )
-
-
-# prompt = PromptTemplate(
-#     template=(
-#         "You are a helpful assistant specialized in cybersecurity.\n\n"
-#         "Use the context to answer concisely.\n\n"
-#         "Context:\n{context}\n\n"
-#         "Question: {question}\n\n"
-#         "Answer:"
-#     ),
-#     input_variables=["context", "question"]
-# )
-
-
-# qa = RetrievalQA.from_chain_type(
-#     llm=llm,
-#     retriever=retriever,
-#     chain_type="stuff",
-#     chain_type_kwargs={"prompt": prompt},
-#     return_source_documents=True
-# )
-
-# query = "What are the latest techniques in network intrusion detection?"
-# result = qa({"query": query})
-
-# print("Answer:", result["result"])
-# print("Sources:", result["source_documents"])
-
-
-from langchain_community.llms import HuggingFaceHub
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
-from langchain_community.vectorstores import Chroma
+import os
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import os
 
-# 1) Load & split docs
-loader = PyPDFDirectoryLoader("./documents")
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
+
+from dotenv import load_dotenv
+
+# Load variables from .env into environment
+load_dotenv()
+
+# --------------------------
+# Config
+# --------------------------
+google_api_key=os.getenv("GOOGLE_API_KEY") # Set this in your environment or .env
+DOCS_DIR = "./documents_cleaned"  # Directory with your PDF files
+CHROMA_DIR = "./chroma_db"
+TOP_K = 4
+
+if not google_api_key:
+    raise RuntimeError("GOOGLE_API_KEY env var is not set.")
+
+# --------------------------
+# 1) Load & split documents
+# --------------------------
+loader = PyPDFDirectoryLoader(DOCS_DIR)
 documents = loader.load()
+if not documents:
+    raise RuntimeError(f"No PDF files found in '{DOCS_DIR}'. Add PDFs and try again.")
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 split_docs = text_splitter.split_documents(documents)
-print(f"Loaded {len(documents)} docs -> {len(split_docs)} chunks")
 
-# 2) Embeddings (start with a known-good model)
-emb_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# --------------------------
+# 2) Embeddings
+# --------------------------
+# Solid default sentence-embedding model
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-# 3) Vector store (correct API)
+# --------------------------
+# 3) Vector store (Chroma)
+#    NOTE: With langchain-chroma, persistence is automatic if you pass persist_directory=...
+# --------------------------
+# First run (build from docs):
 vectordb = Chroma.from_documents(
     documents=split_docs,
-    embedding=emb_model,                 # if error, try: embedding_function=emb_model
-    persist_directory="./chroma_db"
-)
-retriever = vectordb.as_retriever(search_kwargs={"k": 4})
-
-# 4) LLM (use a public model for the first run)
-# Set your token in env (PowerShell):  $env:HUGGINGFACEHUB_API_TOKEN="hf_xxx"
-llm = HuggingFaceHub(
-    repo_id="google/flan-t5-large",
-    model_kwargs={"temperature": 0.1, "max_new_tokens": 512}
+    embedding=embeddings,
+    persist_directory=CHROMA_DIR,
 )
 
-# 5) Prompt + QA
-prompt = PromptTemplate(
-    template=(
-        "You are a helpful assistant specialized in cybersecurity.\n\n"
-        "Use the provided context to answer concisely.\n\n"
-        "Context:\n{context}\n\n"
-        "Question: {question}\n\n"
-        "Answer:"
-    ),
-    input_variables=["context", "question"]
+# If you run this script again later and want to reuse the existing DB instead of rebuilding:
+# vectordb = Chroma(persist_directory=CHROMA_DIR, embedding=embeddings)
+
+retriever = vectordb.as_retriever(search_kwargs={"k": TOP_K})
+
+# --------------------------
+# 4) LLM (Gemini with AI Studio key)
+# --------------------------
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",     # You can also try "gemini-1.5-flash"
+    google_api_key=google_api_key,       # <-- correct kwarg
+    temperature=0.1,
 )
 
-
-qa = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=retriever,
-    chain_type="stuff",
-    chain_type_kwargs={"prompt": prompt},
-    return_source_documents=True
+# --------------------------
+# 5) Prompt & Chains (modern)
+# --------------------------
+prompt = ChatPromptTemplate.from_template(
+    "You are a helpful assistant specialized in cybersecurity.\n\n"
+    "Use ONLY the provided context to answer concisely. "
+    "If the answer is not in the context, say you don't know.\n\n"
+    "Context:\n{context}\n\n"
+    "Question: {input}\n\n"
+    "Answer:"
 )
 
-# 6) Test query
-query = "What are the latest techniques in network intrusion detection?"
-resp = qa({"query": query})  # if you get a key error, try qa.invoke({"query": query})
+# Combine retrieved docs via "stuff" strategy
+document_chain = create_stuff_documents_chain(llm, prompt)
 
-print("\nANSWER:\n", resp["result"])
-print("\nSOURCES:")
-for i, d in enumerate(resp["source_documents"], 1):
-    print(f"[{i}] {d.metadata.get('source', d.metadata.get('file_path', 'unknown'))}")
+# Full retrieval chain: retrieve -> stuff -> LLM
+rag_chain = create_retrieval_chain(retriever, document_chain)
 
+# --------------------------
+# 6) Ask a question
+# --------------------------
+query = "now i have a server and i wanna to scan the opend ports how this can be done?"
+result = rag_chain.invoke({"input": query})
 
+print("\n=== Answer ===")
+print(result.get("answer", ""))
 
-
-
-
-
-    print("heloo wolrd")
-
-
-
+print("\n=== Sources ===")
+for i, doc in enumerate(result.get("context", []), 1):
+    src = doc.metadata.get("source", "Unknown source")
+    page = doc.metadata.get("page", "N/A")
+    print(f"[{i}] {src} (page {page})")

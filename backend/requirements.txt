@@ -1,0 +1,25 @@
+# === Core ===
+python-dotenv>=1.0.0
+
+# === LangChain + Ecosystem ===
+langchain>=0.2.10
+langchain-core>=0.2.10
+langchain-community>=0.2.10
+langchain-chroma>=0.1.1
+langchain-huggingface>=0.1.0
+langchain-google-genai>=0.1.0
+
+# === Vector store ===
+chromadb>=0.5.3
+
+# === Embeddings ===
+sentence-transformers>=3.0.1
+transformers>=4.43.0
+torch>=2.2.0
+
+# === PDF Handling ===
+pypdf>=4.2.0
+pikepdf>=9.0.0
+
+# === Utilities ===
+cryptography>=42.0.0
