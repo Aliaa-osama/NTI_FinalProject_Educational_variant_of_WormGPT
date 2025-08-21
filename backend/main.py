@@ -15,9 +15,9 @@ import asyncio
 from contextlib import asynccontextmanager
 
 # Import our custom modules
-from vector_db import VectorDBConfig, check_database_health
-from rag_service import CybersecurityRAG
-from document_loader import DocumentProcessor
+from backend.vector_db import VectorDBConfig, check_database_health
+from backend.rag_service import CybersecurityRAG
+from backend.document_loader import DocumentProcessor
 
 # Configure logging
 logging.basicConfig(

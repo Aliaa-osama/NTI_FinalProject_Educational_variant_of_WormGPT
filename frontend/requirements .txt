@@ -1,0 +1,5 @@
+# === Frontend requirements (Streamlit UI) ===
+streamlit>=1.34.0
+requests>=2.31.0
+pandas>=2.2.1
+Pillow>=10.2.0

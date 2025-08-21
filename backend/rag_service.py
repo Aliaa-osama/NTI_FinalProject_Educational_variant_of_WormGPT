@@ -13,7 +13,7 @@ import requests
 import json
 
 # Import vector_db modules
-from vector_db import VectorDBConfig, VectorDatabase
+from backend.vector_db import VectorDBConfig, VectorDatabase
 
 logger = logging.getLogger(__name__)
 
