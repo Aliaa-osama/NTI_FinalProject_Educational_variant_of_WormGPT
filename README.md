@@ -18,6 +18,7 @@ It ingests documents, embeds them into a vector database (Chroma by default), an
 .
 ├─ README.md
 ├─ .env
+├─ start.bat
 ├─ backend/
 │  ├─ __init__.py
 │  ├─ main.py                 # FastAPI app (lifespan startup, endpoints)
