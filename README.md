@@ -1,4 +1,7 @@
+# finalproject
 
+<<<<<<< Updated upstream
+=======
 # CyberGuard AI — Cybersecurity RAG Chatbot 🛡️
 
 **CyberGuard AI** is a learning-first cybersecurity chatbot. It’s built for people who want to learn security but can’t find enough reliable material—or hit generic chatbot limits—and for learners who prefer concise explanations over reading long books.  
@@ -218,4 +221,5 @@ Double‑clicking this file will automatically start the backend (FastAPI) and f
 
 ## Demo & Presentation  
 You can find the demo video and presentation here:  
-📂 [Google Drive Folder](https://drive.google.com/drive/folders/1mu_DQivUphgDBEtQbv_YxJy2gPIRkEQY?usp=sharing)
+📂 [Google Drive Folder](https://drive.google.com/drive/folders/1EuLnCdgbdIPY1Zus0kZxuzkDf0iaQ9Ep?usp=sharing)
+>>>>>>> Stashed changes
