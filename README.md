@@ -1,6 +1,6 @@
 # finalproject
 
-<<<<<<< Updated upstream
+
 =======
 # CyberGuard AI — Cybersecurity RAG Chatbot 🛡️
 
